@@ -59,66 +59,54 @@ def _clean_for_pdf(text: str) -> str:
     return text.strip()
 
 def generate_pdf(score, type_key, answers, free_text, ai_comment):
-    """1ページのカルテ風レポートPDFを生成"""
+    from fpdf import FPDF
+    from io import BytesIO
 
-    # 表示に使う文字列をクリーニング
-    type_label = _clean_for_pdf(TYPE_INFO[type_key]["label"])
-    # 先頭の絵文字や記号だけを削除（日本語や英数字が出るまで）
-    type_label = re.sub(r"^[^\w一-龥ぁ-んァ-ン]+", "", type_label)
-    ai_comment_pdf = _clean_for_pdf(ai_comment)
+    # ---------- 1) AIコメントをPDF用に整形 ----------
+    body = ai_comment
 
-    pdf = FPDF()
-    # 1ページに収めたいので自動改ページOFF
-    pdf.set_auto_page_break(auto=False, margin=0)
+    # 行頭の「IT主治医コメント」「診断コメント：〜」行を削除
+    body = re.sub(r'^[ \t　]*[【\[]?IT主治医コメント.*\n?', '', body, flags=re.MULTILINE)
+    body = re.sub(r'^[ \t　]*診断コメント[：:].*\n?', '', body, flags=re.MULTILINE)
+
+    # 「1.\n属人化…」→「1. 属人化…」に結合
+    body = re.sub(r'\n[ \t　]*([0-9]+)[\.．][ \t　]*\n[ \t　]*', r'\n\1. ', body)
+
+    # 空行を整理（3行以上→2行）
+    body = re.sub(r'\n{3,}', '\n\n', body)
+
+    # FPDFが扱えない文字（絵文字など）を削る
+    body = ''.join(ch for ch in body if ord(ch) <= 0xFFFF)
+
+    # ---------- 2) PDFレイアウト ----------
+    pdf = FPDF(format='A4')
     pdf.add_page()
 
-    # 余白設定
-    pdf.set_margins(20, 20, 20)
-    pdf.set_xy(20, 20)
-
-    # 日本語フォント
+    # フォント設定
     pdf.add_font("Noto", "", "NotoSansJP-Regular.ttf", uni=True)
+    pdf.set_auto_page_break(auto=True, margin=18)
 
     # タイトル
     pdf.set_font("Noto", size=18)
     pdf.cell(0, 12, "IT主治医 診断レポート（要約と処方箋）", ln=True)
-    
+
+    # サブタイトル（タイプ名）
+    type_label = TYPE_INFO[type_key]["label"]  # ここは既存の定義に合わせてください
     pdf.ln(4)
     pdf.set_font("Noto", size=12)
     pdf.multi_cell(0, 7, f"診断コメント：{type_label}")
     pdf.ln(6)
 
-    # 仕切り線
-    y = pdf.get_y() + 2
-    pdf.set_draw_color(160, 160, 160)
-    pdf.line(20, y, 190, y)
-    pdf.ln(8)
+    # 本文（AIコメント）
+    pdf.set_font("Noto", size=11)
+    pdf.multi_cell(0, 6, body)
 
-    # 見出し
-    pdf.set_font("Noto", size=12)
-    pdf.cell(0, 8, "【IT主治医コメント（要約と処方箋）】", ln=True)
-
-    pdf.ln(3)
-    pdf.set_font("Noto", size=10)
-
-    # コメント本体（1ページ内に収まる範囲で）
-    pdf.multi_cell(0, 6, ai_comment_pdf)
-
-    # フッター注意書き（小さく）
-    pdf.ln(4)
-    pdf.set_font("Noto", size=8)
-    pdf.set_text_color(120, 120, 120)
-    pdf.multi_cell(
-        0,
-        4,
-        "※このレポートは、製造現場のIT活用状況を簡易的に整理するためのセルフチェック結果です。"
-        "最終的な施策決定は、現場の実情をふまえてご判断ください。",
-    )
-
+    # ---------- 3) バイト列で返す ----------
     buffer = BytesIO()
-    buffer.write(pdf.output(dest="S").encode("latin1"))
+    pdf.output(buffer)
     buffer.seek(0)
-    return buffer
+    return buffer.getvalue()
+
 
 # =========================
 # AI コメント生成
