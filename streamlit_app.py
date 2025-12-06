@@ -266,7 +266,7 @@ def main():
         val = st.radio(q, ["No", "Yes"], horizontal=True)
         answers_yn.append(1 if val == "Yes" else 0)
 
-    st.subheader("■ 自由記述")
+    st.subheader("■ 自由記述（任意）")
     free1 = st.text_area("Q11. IT運用で“最も困っていること”は何ですか？")
     free2 = st.text_area("Q12. 魔法のように一つ改善できるなら、どこを変えたいですか？")
     free_all = f"[困りごと]\n{free1}\n\n[改善したいこと]\n{free2}"
