@@ -1,0 +1,11 @@
+streamlit
+pandas
+altair
+matplotlib
+reportlab
+qrcode
+gspread
+google-auth
+openai
+requests
+Pillow
