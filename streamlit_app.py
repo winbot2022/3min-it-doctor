@@ -90,12 +90,16 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
     pdf.set_font("Noto", size=18)
     pdf.cell(0, 12, "IT主治医 診断レポート（要約と処方箋）", ln=True)
 
-    # サブタイトル（タイプ名）
-    type_label = TYPE_INFO[type_key]["label"]  # ここは既存の定義に合わせてください
+    # サブタイトル（タイプ名）※絵文字などPDF非対応文字を除去
+    raw_label = TYPE_INFO[type_key]["label"]
+    # BMP外の文字（主に絵文字）を削除
+    type_label = "".join(ch for ch in raw_label if ord(ch) <= 0xFFFF)
+
     pdf.ln(4)
     pdf.set_font("Noto", size=12)
     pdf.multi_cell(0, 7, f"診断コメント：{type_label}")
     pdf.ln(6)
+
 
     # 本文（AIコメント）
     pdf.set_font("Noto", size=11)
