@@ -97,7 +97,7 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
 
     # タイトル
     pdf.set_font("Noto", size=18)
-    pdf.cell(0, 12, "IT主治医 診断レポート（要約と処方箋）", ln=True)
+    pdf.cell(0, 12, "IT主治医　 診断レポート（要約と処方箋）", ln=True)
 
     # サブタイトル（タイプ名）※絵文字などPDF非対応文字を除去
     raw_label = TYPE_INFO[type_key]["label"]
