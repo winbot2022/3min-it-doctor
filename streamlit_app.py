@@ -186,34 +186,42 @@ def plot_radar(answers_yn: Dict[str, int]):
 
     st.plotly_chart(fig, use_container_width=True)
 
+# ====== PDF 出力（日本語対応） ======
 
-# ====== PDF 出力 ======
-
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import os
 
+# 日本語フォント設定
 FONT_NAME = "NotoSansJP"
 FONT_PATH = os.path.join(
     os.path.dirname(__file__),
-    "NotoSansJP-Regular.ttf"   # ← 同じ階層にある TTF を指定
+    "NotoSansJP-Regular.ttf"  # app.py と同じ階層に置いたフォント
 )
 
 try:
     pdfmetrics.registerFont(TTFont(FONT_NAME, FONT_PATH))
 except Exception as e:
+    # フォント登録に失敗したときはログ出力だけして処理継続
     print(f"PDFフォント登録エラー: {e}")
 
 
-
-def _wrap_text(text: str, width: int = 40) -> List[str]:
-    # 日本語もざっくり 1文字=1カラムとして扱う簡易折り返し
+def _wrap_text(text: str, width: int = 40):
+    """PDF用の簡易テキスト折り返し（日本語もざっくり幅で折る）"""
     lines = []
     for paragraph in text.split("\n"):
+        paragraph = paragraph.rstrip()
         if not paragraph:
             lines.append("")
             continue
-        lines.extend(textwrap.wrap(paragraph, width=width, break_long_words=True))
+        # 1文字＝1カラムとしてざっくり折り返し
+        while len(paragraph) > width:
+            lines.append(paragraph[:width])
+            paragraph = paragraph[width:]
+        if paragraph:
+            lines.append(paragraph)
     return lines
 
 
@@ -224,6 +232,7 @@ def create_pdf_bytes(
     free_text: Dict[str, str],
     ai_comment: str,
 ) -> bytes:
+    """診断結果PDFを生成して bytes で返す"""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -232,6 +241,7 @@ def create_pdf_bytes(
     y = height - 40
 
     type_label = TYPE_INFO[type_key]["label"]
+
     # タイトル
     c.setFont(FONT_NAME, 16)
     c.drawString(x_margin, y, "IT主治医診断レポート")
@@ -244,173 +254,73 @@ def create_pdf_bytes(
     c.drawString(x_margin, y, f"スコア：{score} / 10")
     y -= 24
 
-    # 質問一覧・自由記述・コメント部分もすべて
-    # c.setFont("Helvetica", 10)
-    # → c.setFont(FONT_NAME, 10)
-
-    # Yes/No の概要
-    c.setFont("Helvetica-Bold", 11)
+    # Yes/No 概要
+    c.setFont(FONT_NAME, 11)
     c.drawString(x_margin, y, "設問ごとの回答（Yes=1 / No=0）")
     y -= 16
-    c.setFont("Helvetica", 10)
+
+    c.setFont(FONT_NAME, 10)
     for q_id, text_q in QUESTIONS_YN.items():
         ans = answers_yn[q_id]
         line = f"{q_id}: {ans}  - {text_q}"
-        for wrapped in _wrap_text(line, width=60):
+        for wrapped in _wrap_text(line, width=30):
             if y < 60:
                 c.showPage()
                 y = height - 40
-                c.setFont("Helvetica", 10)
+                c.setFont(FONT_NAME, 10)
             c.drawString(x_margin, y, wrapped)
             y -= 14
     y -= 10
 
-    # 自由記述
+    # 自由記述 Q11/Q12
     for q_id in ["Q11", "Q12"]:
         title = "Q11 現在の困りごと" if q_id == "Q11" else "Q12 改善したい点"
-        c.setFont("Helvetica-Bold", 11)
+
         if y < 70:
             c.showPage()
             y = height - 40
+
+        c.setFont(FONT_NAME, 11)
         c.drawString(x_margin, y, title)
         y -= 16
 
-        c.setFont("Helvetica", 10)
+        c.setFont(FONT_NAME, 10)
         txt = free_text.get(q_id, "").strip() or "（未記入）"
-        for wrapped in _wrap_text(txt, width=60):
+        for wrapped in _wrap_text(txt, width=36):
             if y < 60:
                 c.showPage()
                 y = height - 40
-                c.setFont("Helvetica", 10)
+                c.setFont(FONT_NAME, 10)
             c.drawString(x_margin, y, wrapped)
             y -= 14
         y -= 8
 
     # 主治医コメント
-    c.setFont("Helvetica-Bold", 11)
     if y < 70:
         c.showPage()
         y = height - 40
+
+    c.setFont(FONT_NAME, 11)
     c.drawString(x_margin, y, "IT主治医コメント")
     y -= 18
 
-    c.setFont("Helvetica", 10)
-    for wrapped in _wrap_text(ai_comment, width=70):
+    c.setFont(FONT_NAME, 10)
+    for wrapped in _wrap_text(ai_comment, width=40):
         if y < 60:
             c.showPage()
             y = height - 40
-            c.setFont("Helvetica", 10)
+            c.setFont(FONT_NAME, 10)
         c.drawString(x_margin, y, wrapped)
         y -= 14
 
     c.showPage()
     c.save()
+
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
 
 
-# ====== Streamlit UI ======
-
-def main():
-    st.set_page_config(
-        page_title="IT主治医診断｜3分セルフチェック",
-        page_icon="🩺",
-        layout="centered",
-    )
-
-    st.title("🩺 製造現場のIT主治医診断（3分セルフチェック）")
-
-    st.markdown(
-        """
-製造現場に導入した「生産管理システム・IoT・各種IT」が  
-**なぜ“うまく使われないまま終わってしまうのか”** を、  
-10問のチェックと自由記述から見立てる **IT主治医の簡易診断** です。
-
-- 回答時間の目安：3分
-- 匿名診断：会社名・メールアドレスの入力は不要です
-- 結果はブラウザ上と PDF で確認できます
-        """
-    )
-
-    st.markdown("---")
-
-    with st.form("it_doctor_form"):
-        st.subheader("1. Yes / No 質問（10問）")
-
-        answers_yn: Dict[str, int] = {}
-
-        for q_id, text_q in QUESTIONS_YN.items():
-            col_q = st.columns([1, 9])
-            with col_q[1]:
-                choice = st.radio(
-                    label=f"{q_id}. {text_q}",
-                    options=["はい", "いいえ"],
-                    key=q_id,
-                    horizontal=True,
-                )
-            answers_yn[q_id] = 1 if choice == "はい" else 0
-
-        st.markdown("---")
-        st.subheader("2. 自由記述（任意）")
-
-        free_text: Dict[str, str] = {}
-        free_text["Q11"] = st.text_area(
-            "Q11. 現在、生産管理システムやIT運用で「最も困っていること」は何ですか？",
-            height=80,
-        )
-        free_text["Q12"] = st.text_area(
-            "Q12. もし“魔法のように”一つだけ改善できるとしたら、どこを変えたいですか？",
-            height=80,
-        )
-
-        submitted = st.form_submit_button("🔍 診断する")
-
-    if not submitted:
-        st.info("上の質問に回答し、「🔍 診断する」ボタンを押すと結果が表示されます。")
-        return
-
-    # ===== 結果計算 =====
-    score, type_key = calc_score_and_type(answers_yn)
-    type_label = TYPE_INFO[type_key]["label"]
-    type_desc = TYPE_INFO[type_key]["description"]
-
-    st.markdown("---")
-    st.header("🩺 IT主治医カルテ（診断結果）")
-
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        st.subheader("タイプ")
-        st.markdown(f"**{type_label}**")
-        st.write(type_desc)
-
-        st.subheader("スコア")
-        st.markdown(f"**{score} / 10**")
-
-    with col2:
-        st.subheader("レーダーチャート")
-        plot_radar(answers_yn)
-
-    # ===== AI コメント =====
-    with st.spinner("IT主治医がカルテを記入しています…（AIコメント生成中）"):
-        ai_comment = generate_ai_comment(score, type_key, answers_yn, free_text)
-
-    st.subheader("IT主治医コメント（AIによる所見）")
-    st.write(ai_comment)
-
-    # ===== 自由記述まとめ =====
-    st.subheader("自由記述のメモ")
-    st.markdown("**Q11 現在の困りごと**")
-    st.write(free_text.get("Q11", "").strip() or "（未記入）")
-
-    st.markdown("**Q12 改善したい点**")
-    st.write(free_text.get("Q12", "").strip() or "（未記入）")
-
-    st.markdown("---")
-
-    # ===== PDF ダウンロード =====
-    pdf_bytes = create_pdf_bytes(score, type_key, answers_yn, free_text, ai_comment)
 
     st.download_button(
         label="📄 診断結果をPDFでダウンロード",
