@@ -33,39 +33,44 @@ def _sanitize_for_pdf(text: str) -> str:
     # ord(c) <= 0xFFFF の文字だけ残す（多くの日本語はこの範囲）
     return "".join(ch for ch in text if ord(ch) <= 0xFFFF)
 
-
 def generate_pdf(score, type_key, answers, free_text, ai_comment):
+    """1ページ版の簡易レポートPDFを生成"""
 
-    # ここで一度サニタイズしておく
+    # PDFで使う文字列だけサニタイズ（絵文字など除去）
     type_label = _sanitize_for_pdf(TYPE_INFO[type_key]["label"])
-    answers_str = _sanitize_for_pdf(str(answers))
-    free_text_pdf = _sanitize_for_pdf(free_text)
     ai_comment_pdf = _sanitize_for_pdf(ai_comment)
 
     pdf = FPDF()
     pdf.add_page()
+    # 自動改ページは切って「1枚だけ」にする
+    pdf.set_auto_page_break(auto=False, margin=0)
+
     pdf.add_font("Noto", "", "NotoSansJP-Regular.ttf", uni=True)
+    pdf.set_font("Noto", size=16)
+
+    # タイトル
+    pdf.cell(0, 10, "IT主治医診断レポート", ln=True)
+
+    pdf.ln(6)
     pdf.set_font("Noto", size=12)
+    pdf.multi_cell(0, 8, f"【タイプ】{type_label}")
 
-    pdf.cell(0, 10, "IT主治医診断（結果レポート）", ln=True)
+    pdf.ln(4)
+    pdf.set_font("Noto", size=11)
+    pdf.cell(0, 8, "【IT主治医コメント】", ln=True)
 
-    pdf.ln(5)
-    pdf.cell(0, 10, f"■ スコア：{score} / 10", ln=True)
-    pdf.cell(0, 10, f"■ タイプ：{type_label}", ln=True)
-
-    pdf.ln(5)
-    pdf.multi_cell(0, 8, f"■ 回答結果：{answers_str}")
-
-    pdf.ln(5)
-    pdf.multi_cell(0, 8, f"■ 自由記述：\n{free_text_pdf}")
-
-    pdf.ln(5)
-    pdf.multi_cell(0, 8, "■ 主治医コメント（AI生成）\n" + ai_comment_pdf)
+    pdf.ln(2)
+    pdf.set_font("Noto", size=10)
+    # コメント本体（長くても2ページ目は作らず、1枚に収まるところまで）
+    pdf.multi_cell(0, 6, ai_comment_pdf)
 
     buffer = BytesIO()
     buffer.write(pdf.output(dest="S").encode("latin1"))
     buffer.seek(0)
     return buffer
+
+
+
 
 
 # =========================
