@@ -232,8 +232,7 @@ def create_pdf_bytes(
     y = height - 40
 
     type_label = TYPE_INFO[type_key]["label"]
-　　
-     # タイトル
+　  # タイトル
     c.setFont(FONT_NAME, 16)
     c.drawString(x_margin, y, "IT主治医診断レポート")
     y -= 30
