@@ -25,7 +25,22 @@ TYPE_INFO = {
 # =========================
 # PDF生成（FPDF + 日本語フォント）
 # =========================
+
+def _sanitize_for_pdf(text: str) -> str:
+    """FPDFが苦手な絵文字などを除去（BMP外の文字を削る）"""
+    if not isinstance(text, str):
+        text = str(text)
+    # ord(c) <= 0xFFFF の文字だけ残す（多くの日本語はこの範囲）
+    return "".join(ch for ch in text if ord(ch) <= 0xFFFF)
+
+
 def generate_pdf(score, type_key, answers, free_text, ai_comment):
+
+    # ここで一度サニタイズしておく
+    type_label = _sanitize_for_pdf(TYPE_INFO[type_key]["label"])
+    answers_str = _sanitize_for_pdf(str(answers))
+    free_text_pdf = _sanitize_for_pdf(free_text)
+    ai_comment_pdf = _sanitize_for_pdf(ai_comment)
 
     pdf = FPDF()
     pdf.add_page()
@@ -36,16 +51,16 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
 
     pdf.ln(5)
     pdf.cell(0, 10, f"■ スコア：{score} / 10", ln=True)
-    pdf.cell(0, 10, f"■ タイプ：{TYPE_INFO[type_key]['label']}", ln=True)
+    pdf.cell(0, 10, f"■ タイプ：{type_label}", ln=True)
 
     pdf.ln(5)
-    pdf.multi_cell(0, 8, f"■ 回答結果：{answers}")
+    pdf.multi_cell(0, 8, f"■ 回答結果：{answers_str}")
 
     pdf.ln(5)
-    pdf.multi_cell(0, 8, f"■ 自由記述：\n{free_text}")
+    pdf.multi_cell(0, 8, f"■ 自由記述：\n{free_text_pdf}")
 
     pdf.ln(5)
-    pdf.multi_cell(0, 8, "■ 主治医コメント（AI生成）\n" + ai_comment)
+    pdf.multi_cell(0, 8, "■ 主治医コメント（AI生成）\n" + ai_comment_pdf)
 
     buffer = BytesIO()
     buffer.write(pdf.output(dest="S").encode("latin1"))
