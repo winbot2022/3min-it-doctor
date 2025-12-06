@@ -189,8 +189,21 @@ def plot_radar(answers_yn: Dict[str, int]):
 
 # ====== PDF 出力 ======
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import os
+
+FONT_NAME = "NotoSansJP"
+FONT_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "NotoSansJP-Regular.ttf"   # ← 同じ階層にある TTF を指定
+)
+
+try:
+    pdfmetrics.registerFont(TTFont(FONT_NAME, FONT_PATH))
+except Exception as e:
+    print(f"PDFフォント登録エラー: {e}")
+
 
 
 def _wrap_text(text: str, width: int = 40) -> List[str]:
@@ -219,16 +232,22 @@ def create_pdf_bytes(
     y = height - 40
 
     type_label = TYPE_INFO[type_key]["label"]
-
-    c.setFont("Helvetica-Bold", 16)
+　　
+     # タイトル
+    c.setFont(FONT_NAME, 16)
     c.drawString(x_margin, y, "IT主治医診断レポート")
     y -= 30
 
-    c.setFont("Helvetica", 11)
+    # スコア・タイプ
+    c.setFont(FONT_NAME, 11)
     c.drawString(x_margin, y, f"タイプ：{type_label}")
     y -= 16
     c.drawString(x_margin, y, f"スコア：{score} / 10")
     y -= 24
+
+    # 質問一覧・自由記述・コメント部分もすべて
+    # c.setFont("Helvetica", 10)
+    # → c.setFont(FONT_NAME, 10)
 
     # Yes/No の概要
     c.setFont("Helvetica-Bold", 11)
