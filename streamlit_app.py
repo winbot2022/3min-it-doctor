@@ -106,10 +106,13 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
     pdf.multi_cell(0, 6, body)
 
     # ---------- 3) バイト列で返す ----------
+    from io import BytesIO
     buffer = BytesIO()
-    pdf.output(buffer)
+    pdf_bytes = pdf.output(dest="S").encode("latin1")  # ← 文字列として取得
+    buffer.write(pdf_bytes)
     buffer.seek(0)
     return buffer.getvalue()
+
 
 
 # =========================
