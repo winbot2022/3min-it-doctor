@@ -62,8 +62,17 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
     from fpdf import FPDF
     from io import BytesIO
 
-    # ---------- 1) AIコメントをPDF用に整形 ----------
+    # ---------- 本文テキスト整形（Markdown記号と＊を除去） ----------
     body = ai_comment
+
+    # 見出しの # を除去（行頭の ###, #### など）
+    body = re.sub(r'^\s*#{1,6}\s*', '', body, flags=re.MULTILINE)
+
+    # Markdownの強調記号 * と 全角の＊ をすべて削除
+    body = body.replace('*', '').replace('＊', '')
+
+    # 空行が詰まりすぎるのを防ぐ（3行以上の連続改行 → 2行に）
+    body = re.sub(r'\n{3,}', '\n\n', body)
 
     # 行頭の「IT主治医コメント」「診断コメント：〜」行を削除
     body = re.sub(r'^[ \t　]*[【\[]?IT主治医コメント.*\n?', '', body, flags=re.MULTILINE)
