@@ -27,31 +27,32 @@ TYPE_INFO = {
 # PDF生成（FPDF + 日本語フォント）
 # =========================
 def _clean_for_pdf(text: str) -> str:
-    """PDF用にテキストを整形"""
+    """PDF用テキスト整形（箇条書き、行結合、記号除去）"""
     if not isinstance(text, str):
         text = str(text)
 
     # 絵文字など BMP外の文字を除去
     text = "".join(ch for ch in text if ord(ch) <= 0xFFFF)
 
-    # Markdown見出し記号 ### などを削除
+    # Markdown見出し ### → 削除
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
 
-    # 箇条書き（- または *） → ・ に変換（行頭が数字 + . のものは除外）
+    # 箇条書き（- または *） → ・（数字行 1. や 2. は除外）
     text = re.sub(r"^(?!\s*\d+\.)\s*[-*]\s*", "・", text, flags=re.MULTILINE)
 
-    # 強調記号 **, * を削除
+    # Markdown強調記号 **,* を削除
     text = re.sub(r"\*{1,3}", "", text)
 
-    # 「1.\n特定の担当者が〜」のようなパターンを「1. 特定の担当者が〜」に結合
-    # 行頭に「数字.」だけが書かれている行を、次の行とつなげる
+    # 【重要】段落番号タイトル「1.\n本文」を「1. タイトル：本文」に結合
+    # パターン例：
+    # "1. 属人化の進行\n\n特定の担当者に依存…" → "1. 属人化の進行：特定の担当者に依存…"
     text = re.sub(
-        r"\n\s*(\d+)\.\s*\n\s*",
-        lambda m: "\n" + m.group(1) + ". ",
-        text,
+        r"(\d+)\.\s*([^\n]+?)\s*\n+\s*([^\n]+)",
+        r"\1. \2：\3",
+        text
     )
 
-    # 3行以上の空行は2行に圧縮
+    # 空行圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
@@ -79,11 +80,12 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
 
     # タイトル
     pdf.set_font("Noto", size=18)
-    pdf.cell(0, 10, "IT主治医診断レポート", ln=True)
-
+    pdf.cell(0, 12, "IT主治医 診断レポート（要約と処方箋）", ln=True)
+    
     pdf.ln(4)
     pdf.set_font("Noto", size=12)
-    pdf.cell(0, 8, f"【タイプ】{type_label}", ln=True)
+    pdf.multi_cell(0, 7, f"診断コメント：{type_label}")
+    pdf.ln(6)
 
     # 仕切り線
     y = pdf.get_y() + 2
