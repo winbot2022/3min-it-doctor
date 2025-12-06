@@ -27,32 +27,36 @@ TYPE_INFO = {
 # PDF生成（FPDF + 日本語フォント）
 # =========================
 def _clean_for_pdf(text: str) -> str:
-    """PDF用テキスト整形（箇条書き、行結合、記号除去）"""
+    """PDF用テキスト整形（不要見出し削除＋箇条書き＋番号行結合）"""
     if not isinstance(text, str):
         text = str(text)
 
-    # 絵文字など BMP外の文字を除去
+    # 絵文字など BMP 外の文字を除去（FPDF対策）
     text = "".join(ch for ch in text if ord(ch) <= 0xFFFF)
 
-    # Markdown見出し ### → 削除
+    # --- 不要な見出しを削除（AIコメント内の重複見出し） ---
+    # 例: 「IT主治医コメント（要約と処方箋）」行、「診断コメント」行
+    text = re.sub(r"^IT主治医コメント.*\n", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^診断コメント[:：]?.*\n", "", text, flags=re.MULTILINE)
+
+    # Markdown見出し "### " などを削除
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
 
-    # 箇条書き（- または *） → ・（数字行 1. や 2. は除外）
+    # --- 箇条書き: 行頭の「- 」や「* 」を「・」に変換（数字行は除外） ---
     text = re.sub(r"^(?!\s*\d+\.)\s*[-*]\s*", "・", text, flags=re.MULTILINE)
 
-    # Markdown強調記号 **,* を削除
+    # Markdown強調記号 ** や * を削除
     text = re.sub(r"\*{1,3}", "", text)
 
-    # 【重要】段落番号タイトル「1.\n本文」を「1. タイトル：本文」に結合
-    # パターン例：
-    # "1. 属人化の進行\n\n特定の担当者に依存…" → "1. 属人化の進行：特定の担当者に依存…"
+    # --- 「1.\n本文」を「1. 本文」に結合 ---
+    # 例: "\n1.\n現在のIT..." → "\n1. 現在のIT..."
     text = re.sub(
-        r"(\d+)\.\s*([^\n]+?)\s*\n+\s*([^\n]+)",
-        r"\1. \2：\3",
-        text
+        r"\n\s*(\d+)\.\s*\n\s*",
+        lambda m: "\n" + m.group(1) + ". ",
+        text,
     )
 
-    # 空行圧縮
+    # 3行以上連続する空行は2行までに圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
