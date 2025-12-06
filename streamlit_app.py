@@ -43,7 +43,10 @@ def _clean_for_pdf(text: str) -> str:
 
     # Markdown 強調記号 **太字** *斜体* を削除
     text = re.sub(r"\*{1,3}", "", text)
-
+    
+    # 「1.\n属人化…」のような改行を「1. 属人化…」にまとめる
+    text = re.sub(r"\n(\d+\.)(\s*\n)", r"\n\1 ", text)
+    
     # 3行以上の空行は2行に圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
 
@@ -54,6 +57,8 @@ def generate_pdf(score, type_key, answers, free_text, ai_comment):
 
     # 表示に使う文字列をクリーニング
     type_label = _clean_for_pdf(TYPE_INFO[type_key]["label"])
+    # 先頭の絵文字や記号だけを削除（日本語や英数字が出るまで）
+    type_label = re.sub(r"^[^\w一-龥ぁ-んァ-ン]+", "", type_label)
     ai_comment_pdf = _clean_for_pdf(ai_comment)
 
     pdf = FPDF()
