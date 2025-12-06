@@ -181,47 +181,67 @@ def main():
     # ドクターイエロー配色（薄黄色テーマ）
     # =========================
     st.markdown("""
-        <style>
-            /* 背景色（全体） */
-            .stApp {
-                background-color: #FFFDE7; /* 薄い黄色（Doctor Yellow系） */
-            }
-    
-            /* サイドバー */
-            section[data-testid="stSidebar"] {
-                background-color: #FFF9C4;
-            }
-    
-            /* ボタン */
-            .stButton>button {
-                background-color: #FDD835;  /* 濃いめの黄色 */
-                color: black;
-                border-radius: 8px;
-                font-weight: bold;
-                border: none;
-            }
-            .stButton>button:hover {
-                background-color: #FBC02D;
-                color: black;
-            }
-    
-            /* タイトル系 */
-            h1, h2, h3 {
-                color: #F57F17; /* 濃い黄土色（医療・安全カラー） */
-            }
-    
-            /* 質問テキスト */
-            label {
-                color: #6D4C41; /* 落ち着いたブラウン系で読みやすい */
-                font-weight: 600;
-            }
-    
-            /* ラジオボタン（Yes/No） */
-            div[role="radiogroup"] > label > div {
-                background-color: #FFF9C4 !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    <style>
+        /* 背景色（全体） */
+        .stApp {
+            background-color: #FFFDE7;
+        }
+
+        /* サイドバー */
+        section[data-testid="stSidebar"] {
+            background-color: #FFF9C4;
+        }
+
+        /* ボタン */
+        .stButton>button {
+            background-color: #FDD835;
+            color: black;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+        }
+        .stButton>button:hover {
+            background-color: #FBC02D;
+            color: black;
+        }
+
+        /* タイトル系 */
+        h1, h2, h3 {
+            color: #F57F17;
+        }
+
+        /* 質問テキスト */
+        label {
+            color: #6D4C41;
+            font-weight: 600;
+        }
+
+        /* ラジオボタン（Yes / No） */
+        div[role="radiogroup"] > label {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            margin-right: 8px;
+            margin-bottom: 4px;
+            border-radius: 999px;
+            background-color: #FFF9C4;
+            border: 1px solid #FBC02D;
+        }
+
+        /* ホバー時 */
+        div[role="radiogroup"] > label:hover {
+            background-color: #FFE082;
+        }
+
+        /* 選択されている方を濃い黄色＋太字に */
+        div[role="radiogroup"] input:checked + div {
+            background-color: #FDD835 !important;
+            color: #000000 !important;
+            font-weight: 700;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 
     st.title("🩺 IT主治医診断（3分）")
     st.write("製造現場に導入したITが『なぜ使われないのか』を3分で可視化する診断です。")
