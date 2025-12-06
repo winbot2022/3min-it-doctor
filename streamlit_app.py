@@ -28,7 +28,7 @@ TYPE_INFO = {
 # =========================
 
 def _clean_for_pdf(text: str) -> str:
-    """PDF用にテキストを整形（絵文字除去＋Markdown簡易除去）"""
+    """PDF用にテキストを整形（絵文字除去＋Markdown簡易除去＋太字記号削除）"""
     if not isinstance(text, str):
         text = str(text)
 
@@ -40,6 +40,9 @@ def _clean_for_pdf(text: str) -> str:
 
     # 箇条書き「- 」「* 」を「・」に変換
     text = re.sub(r"^\s*[-*]\s*", "・", text, flags=re.MULTILINE)
+
+    # Markdown 強調記号 **太字** *斜体* を削除
+    text = re.sub(r"\*{1,3}", "", text)
 
     # 3行以上の空行は2行に圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
