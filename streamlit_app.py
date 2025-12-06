@@ -37,16 +37,21 @@ def _clean_for_pdf(text: str) -> str:
     # Markdown見出し記号 ### などを削除
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
 
-    # 箇条書き（- または *） → ・ に変換（数字 + . は除外）
-    text = re.sub(r"^(?!\d+\.)\s*[-*]\s*", "・", text, flags=re.MULTILINE)
+    # 箇条書き（- または *） → ・ に変換（行頭が数字 + . のものは除外）
+    text = re.sub(r"^(?!\s*\d+\.)\s*[-*]\s*", "・", text, flags=re.MULTILINE)
 
-    # 強調記号 ** など削除
+    # 強調記号 **, * を削除
     text = re.sub(r"\*{1,3}", "", text)
 
-    # 「1.\n属人化」を「1. 属人化」に結合
-    text = re.sub(r"\n(\d+\.)(\s*\n)", r"\n\1 ", text)
+    # 「1.\n特定の担当者が〜」のようなパターンを「1. 特定の担当者が〜」に結合
+    # 行頭に「数字.」だけが書かれている行を、次の行とつなげる
+    text = re.sub(
+        r"\n\s*(\d+)\.\s*\n\s*",
+        lambda m: "\n" + m.group(1) + ". ",
+        text,
+    )
 
-    # 空行圧縮
+    # 3行以上の空行は2行に圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
