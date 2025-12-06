@@ -26,28 +26,27 @@ TYPE_INFO = {
 # =========================
 # PDF生成（FPDF + 日本語フォント）
 # =========================
-
 def _clean_for_pdf(text: str) -> str:
-    """PDF用にテキストを整形（絵文字除去＋Markdown簡易除去＋太字記号削除）"""
+    """PDF用にテキストを整形"""
     if not isinstance(text, str):
         text = str(text)
 
-    # 絵文字など BMP外の文字を除去（FPDF対策）
+    # 絵文字など BMP外の文字を除去
     text = "".join(ch for ch in text if ord(ch) <= 0xFFFF)
 
-    # Markdown見出し記号「### 」などを削除
+    # Markdown見出し記号 ### などを削除
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
 
-    # 箇条書き「- 」「* 」を「・」に変換
-    text = re.sub(r"^\s*[-*]\s*", "・", text, flags=re.MULTILINE)
+    # 箇条書き（- または *） → ・ に変換（数字 + . は除外）
+    text = re.sub(r"^(?!\d+\.)\s*[-*]\s*", "・", text, flags=re.MULTILINE)
 
-    # Markdown 強調記号 **太字** *斜体* を削除
+    # 強調記号 ** など削除
     text = re.sub(r"\*{1,3}", "", text)
-    
-    # 「1.\n属人化…」のような改行を「1. 属人化…」にまとめる
+
+    # 「1.\n属人化」を「1. 属人化」に結合
     text = re.sub(r"\n(\d+\.)(\s*\n)", r"\n\1 ", text)
-    
-    # 3行以上の空行は2行に圧縮
+
+    # 空行圧縮
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
