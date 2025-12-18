@@ -50,24 +50,25 @@ def _open_ws():
     return ws
 
 def log_event(event_type: str, path: str = ""):
+    # =========================
+    # UA_NA（Streamlit内部アクセス）を除外
+    # =========================
+    try:
+        ua = st.context.headers.get("user-agent", "")
+    except Exception:
+        ua = ""
+
+    if not ua:
+        return  # ← UA_NA は記録しない
+
     try:
         ws = _open_ws()
-
-        ua = "UA_NA"
-        try:
-            ua_tmp = st.context.headers.get("user-agent", "")
-            if ua_tmp:
-                ua = ua_tmp
-        except Exception:
-            pass
-
         ws.append_row(
             [_jst_now_str(), event_type, "it_doctor", path, ua],
             value_input_option="RAW",
         )
     except Exception:
         pass
-
 
 # =====================================================
 # OpenAI クライアント
