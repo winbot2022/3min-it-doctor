@@ -53,6 +53,11 @@ def log_event(event_type: str, path: str = ""):
     """visit / click_start のみ記録（失敗してもアプリは落とさない）"""
     try:
         ws = _open_ws()
+        ua = ""
+        try:
+            ua = st.context.headers.get("user-agent", "")
+        except Exception:
+            ua = ""
         ws.append_row(
             [_jst_now_str(), event_type, "it_doctor", path],
             value_input_option="RAW",
