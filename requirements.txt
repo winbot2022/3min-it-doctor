@@ -11,3 +11,4 @@ requests
 Pillow
 plotly
 fpdf
+pytz
