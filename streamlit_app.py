@@ -50,16 +50,19 @@ def _open_ws():
     return ws
 
 def log_event(event_type: str, path: str = ""):
-    """visit / click_start のみ記録（失敗してもアプリは落とさない）"""
     try:
         ws = _open_ws()
-        ua = ""
+
+        ua = "UA_NA"
         try:
-            ua = st.context.headers.get("user-agent", "")
+            ua_tmp = st.context.headers.get("user-agent", "")
+            if ua_tmp:
+                ua = ua_tmp
         except Exception:
-            ua = ""
+            pass
+
         ws.append_row(
-            [_jst_now_str(), event_type, "it_doctor", path],
+            [_jst_now_str(), event_type, "it_doctor", path, ua],
             value_input_option="RAW",
         )
     except Exception:
