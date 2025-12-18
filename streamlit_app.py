@@ -26,20 +26,28 @@ def _jst_now_str():
 # =====================================================
 # Google Sheets 接続（EVENTS_IT_DOCTOR）
 # =====================================================
+import json
+
 @st.cache_resource
 def _open_ws():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
     ]
+
     sa_info = st.secrets["GOOGLE_SERVICE_JSON"]
+
+    # ★ここが重要：Secrets が文字列で入っている場合は JSON として parse
+    if isinstance(sa_info, str):
+        sa_info = sa_info.strip()
+        sa_info = json.loads(sa_info)
+
     creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
     gc = gspread.authorize(creds)
 
     sh = gc.open_by_key(st.secrets["SPREADSHEET_ID"])
-    ws = sh.worksheet(st.secrets["EVENTS_TAB"])  # ← EVENTS_IT_DOCTOR
+    ws = sh.worksheet(st.secrets["EVENTS_TAB"])  # "EVENTS_IT_DOCTOR"
     return ws
-
 
 def log_event(event_type: str, path: str = ""):
     """visit / click_start のみ記録（失敗してもアプリは落とさない）"""
