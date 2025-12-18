@@ -7,6 +7,43 @@ from openai import OpenAI
 import os
 import re
 
+#追加
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+import pytz
+
+def _jst_now_str():
+    jst = pytz.timezone("Asia/Tokyo")
+    return datetime.now(jst).strftime("%Y-%m-%d %H:%M:%S")
+
+import streamlit as st
+@st.cache_resource
+def _open_ws():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    sa_info = st.secrets["GOOGLE_SERVICE_JSON"]
+    creds = Credentials.from_service_account_info(sa_info, scopes=scopes)
+    gc = gspread.authorize(creds)
+
+    sh = gc.open_by_key(st.secrets["SPREADSHEET_ID"])
+    ws = sh.worksheet(st.secrets["EVENTS_TAB"])  # ← ★ここで EVENTS_TAB を使う
+    return ws
+
+def log_event(event_type: str, path: str = ""):
+    try:
+        ws = _open_ws()
+        ws.append_row(
+            [_jst_now_str(), event_type, "it_doctor", path],
+            value_input_option="RAW",
+        )
+    except Exception:
+        # ログ失敗でアプリが落ちるのが最悪なので握りつぶす
+        pass
+
+
 # =========================
 #  OpenAI クライアント
 # =========================
@@ -300,6 +337,12 @@ def main():
 
 
     st.title("🩺 IT主治医診断（3分）")
+    
+    # visit：セッションで1回だけ
+    if "visit_logged" not in st.session_state:
+        st.session_state.visit_logged = True
+        log_event("visit", path="top")
+        
     st.write("製造現場に導入したITが『なぜ使われないのか』を3分で可視化する診断です。")
 
     st.subheader("■ 質問（10問）")
@@ -328,6 +371,7 @@ def main():
     free_all = f"[困りごと]\n{free1}\n\n[改善したいこと]\n{free2}"
 
     if st.button("🩺 診断する"):
+        log_event("click_start", path="top")
         score = sum(answers_yn)
         type_key = classify_type(score)
 
